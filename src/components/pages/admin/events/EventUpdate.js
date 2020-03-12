@@ -70,7 +70,8 @@ class Event extends Component {
 			isSubmitting: false,
 			//When ticket times are dirty, don't mess with the timing
 			ticketTimesDirty: false,
-			showImportPreviousEventDialog: false
+			showImportPreviousEventDialog: false,
+			availableVenues: []
 		};
 	}
 
@@ -84,6 +85,7 @@ class Event extends Component {
 			eventUpdateStore.loadDetails(id, event => {
 				user.setCurrentOrganizationRolesAndScopes(event.organizationId);
 				this.setOrganizationId();
+				this.loadOrgVenueLinks();
 			});
 			//On loading an event, don't automatically change ticket times
 			this.setState({ ticketTimesDirty: true });
@@ -92,6 +94,28 @@ class Event extends Component {
 			//TODO add this back when there's more spec
 			//this.setState({ showImportPreviousEventDialog: true });
 			this.setOrganizationId();
+		}
+	}
+
+	loadOrgVenueLinks() {
+		const organization_id = user.currentOrganizationId;
+		if (organization_id) {
+			Bigneon()
+				.organizations.venues.index({ organization_id })
+				.then(response => {
+					const { data } = response.data;
+					this.setState({
+						availableVenues: data
+					});
+
+				})
+				.catch(error => {
+					console.error(error);
+					notifications.showFromErrorResponse({
+						defaultMessage: "There was a problem loading your venues",
+						error
+					});
+				});
 		}
 	}
 
@@ -429,7 +453,9 @@ class Event extends Component {
 		const { event } = eventUpdateStore;
 		const hasPublishDate = !!event.publishDate;
 		const shouldUnpublish = !!event.shouldUnpublish;
-		const publishedDateBeforeNow = moment.utc(event.publishDate).isBefore(moment.utc());
+		const publishedDateBeforeNow = moment
+			.utc(event.publishDate)
+			.isBefore(moment.utc());
 
 		return (
 			<div>
@@ -485,7 +511,8 @@ class Event extends Component {
 			errors,
 			isSubmitting,
 			ticketTimesDirty,
-			showImportPreviousEventDialog
+			showImportPreviousEventDialog,
+			availableVenues
 		} = this.state;
 
 		const { id, event, artists, disabledExternalEvent } = eventUpdateStore;
@@ -557,6 +584,7 @@ class Event extends Component {
 							validateFields={this.validateFields.bind(this)}
 							errors={errors.event || {}}
 							hasSubmitted={this.hasSubmitted}
+							availableVenues={availableVenues}
 						/>
 
 						<div className={classes.spacer}/>
@@ -654,11 +682,7 @@ class Event extends Component {
 									fullWidth
 									variant="callToAction"
 								>
-									{isDraft
-										? "Save"
-										: isSubmitting
-											? "Updating..."
-											: "Update"}
+									{isDraft ? "Save" : isSubmitting ? "Updating..." : "Update"}
 								</Button>
 							</div>
 						</div>

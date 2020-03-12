@@ -294,7 +294,6 @@ class Details extends Component {
 		super(props);
 
 		this.state = {
-			venues: null,
 			selectedAgeLimitOption: null,
 			ageLimits: {},
 			dateError: {}
@@ -309,7 +308,13 @@ class Details extends Component {
 	}
 
 	componentDidMount() {
-		this.loadOrgVenueLinks();
+		const { availableVenues } = this.props;
+		//If it's a new event and there is only one private venue available then auto select that one
+
+		const privateVenues = availableVenues.filter(v => v.is_private);
+		if (privateVenues.length === 1 && !eventUpdateStore.id) {
+			this.changeDetails({ venueId: privateVenues[0].id });
+		}
 	}
 
 	loadOrgVenueLinks() {
@@ -339,16 +344,15 @@ class Details extends Component {
 	}
 
 	renderVenues() {
-		const { venues } = this.state;
-		const { errors } = this.props;
+		// const { availableVenues } = this.state;
+		const { errors, availableVenues } = this.props;
 		const { venueId } = eventUpdateStore.event;
-
 		const venueOptions = [];
 
 		let label = "";
 
-		if (venues !== null) {
-			venues.forEach(venue => {
+		if (availableVenues !== null) {
+			availableVenues.forEach(venue => {
 				venueOptions.push({ value: venue.id, label: venue.name });
 			});
 
