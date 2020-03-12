@@ -94,6 +94,7 @@ class Event extends Component {
 			//TODO add this back when there's more spec
 			//this.setState({ showImportPreviousEventDialog: true });
 			this.setOrganizationId();
+			this.loadOrgVenueLinks();
 		}
 	}
 
@@ -107,7 +108,6 @@ class Event extends Component {
 					this.setState({
 						availableVenues: data
 					});
-
 				})
 				.catch(error => {
 					console.error(error);

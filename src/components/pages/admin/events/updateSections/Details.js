@@ -319,34 +319,7 @@ class Details extends Component {
 		}
 	}
 
-	loadOrgVenueLinks() {
-		const organization_id = user.currentOrganizationId;
-		if (organization_id) {
-			Bigneon()
-				.organizations.venues.index({ organization_id })
-				.then(response => {
-					const { data } = response.data;
-					this.setState({
-						venues: data
-					});
-					//If it's a new event and there is only one private venue available then auto select that one
-					const privateVenues = data.filter(v => v.is_private);
-					if (privateVenues.length === 1 && !eventUpdateStore.id) {
-						this.changeDetails({ venueId: privateVenues[0].id });
-					}
-				})
-				.catch(error => {
-					console.error(error);
-					notifications.showFromErrorResponse({
-						defaultMessage: "There was a problem loading your venues",
-						error
-					});
-				});
-		}
-	}
-
 	renderVenues() {
-		// const { availableVenues } = this.state;
 		const { errors, availableVenues } = this.props;
 		const { venueId } = eventUpdateStore.event;
 		const venueOptions = [];
