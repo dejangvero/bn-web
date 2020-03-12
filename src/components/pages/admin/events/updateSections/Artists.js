@@ -51,7 +51,8 @@ const formatForInput = artistArray => {
 			importance,
 			setTime: set_time
 				? moment.utc(set_time, moment.HTML5_FMT.DATETIME_LOCAL_MS)
-				: null
+				: null,
+			artist
 		};
 	});
 
@@ -66,8 +67,8 @@ class ArtistDetails extends Component {
 		super(props);
 
 		this.state = {
-			artists: props.artists,
 			showArtistSelect: false,
+			//These are the current search results for artists
 			availableArtists: null,
 			spotifyAvailableArtists: null,
 			spotifyArtists: {},
@@ -77,32 +78,23 @@ class ArtistDetails extends Component {
 	}
 
 	componentDidMount() {
+		//Load some initial artists
 		Bigneon()
 			.artists.index()
 			.then(response => {
-				const { data, paging } = response.data; //@TODO Implement pagination
+				const { data } = response.data;
 				this.setState({ availableArtists: data });
 			})
 			.catch(error => {
 				console.error(error);
-
-				let message = "Loading artists failed.";
-				if (
-					error.response &&
-					error.response.data &&
-					error.response.data.error
-				) {
-					message = error.response.data.error;
-				}
-
-				notifications.show({
-					message,
-					variant: "error"
+				notifications.showFromErrorResponse({
+					error,
+					defaultMessage: "There was a problem loading the artists"
 				});
 			});
 	}
 
-	addNewArtist(id) {
+	addNewArtist(id, artist) {
 		const { spotifyArtists } = this.state;
 
 		if (spotifyArtists.hasOwnProperty(id)) {
@@ -111,8 +103,7 @@ class ArtistDetails extends Component {
 			return;
 		}
 
-		eventUpdateStore.addArtist(id);
-
+		eventUpdateStore.addArtist(id, artist);
 		if (eventUpdateStore.artists.length === 1) {
 			const { availableArtists } = this.state;
 			const selectedArtist = availableArtists.find(a => a.id === id);
@@ -130,14 +121,13 @@ class ArtistDetails extends Component {
 				}
 			}
 		}
+
 	}
 
 	onDelete(index) {
 		const { event, artists } = eventUpdateStore;
-		const { availableArtists } = this.state;
-		const id = artists[index].id;
-		const selectedArtist = availableArtists.find(a => a.id === id);
-		const currentEventPromoUrl = event.promoImageUrl || "";
+		const selectedArtist = artists[index].artist;
+		const currentEventPromoUrl = event.originalPromoImageUrl || event.promoImageUrl || "";
 
 		//If the event promo image was set by this artist, remove it
 		if (currentEventPromoUrl === selectedArtist.image_url) {
@@ -176,15 +166,15 @@ class ArtistDetails extends Component {
 					return { availableArtists };
 				});
 
-				//Add the
-				this.addNewArtist(id);
+				//Add the artist data
+				this.addNewArtist(id, response.data);
 			})
 			.catch(error => {
 				console.error(error);
 				this.setState({ isSubmitting: false });
 
 				notifications.showFromErrorResponse({
-					defaultMessage: "Creating new artist failed.",
+					defaultMessage: "There was a problem creating your new artist.",
 					error
 				});
 
@@ -207,15 +197,23 @@ class ArtistDetails extends Component {
 				});
 				results = results.data.data;
 				const spotifyArtists = {};
+				const spotifyResults = [];
+				const availableArtists = [];
 				results
-					.filter(artist => !artist.id && artist.spotify_id)
 					.forEach(artist => {
-						spotifyArtists[artist.spotify_id] = true;
+						if (!artist.id && artist.spotify_id) {
+							spotifyArtists[artist.spotify_id] = true;
+							spotifyResults.push(artist);
+						} else {
+							availableArtists.push(artist);
+						}
+
 					});
 				this.setState({
 					isSearching: false,
 					spotifyAvailableArtists: results,
-					spotifyArtists
+					spotifyArtists,
+					availableArtists
 				});
 			} catch (e) {
 				this.setState({ isSearching: false });
@@ -310,7 +308,7 @@ class ArtistDetails extends Component {
 				placeholder={"eg. Childish Gambino"}
 				onChange={artistId => {
 					if (artistId) {
-						this.addNewArtist(artistId);
+						this.addNewArtist(artistId, availableArtists.find(artist => artist.id === artistId));
 						this.setState({ showArtistSelect: false });
 					}
 				}}
@@ -355,42 +353,37 @@ class ArtistDetails extends Component {
 
 	render() {
 		const { classes, errors } = this.props;
-		const { availableArtists, showArtistSelect } = this.state;
+		const { showArtistSelect } = this.state;
 		const { artists, artistTypeActiveIndex } = eventUpdateStore;
 
 		return (
 			<div>
 				<FlipMove staggerDurationBy="50">
 					{artists.map((eventArtist, index) => {
-						const { id, setTime, importance } = eventArtist;
-
-						let name = "Loading..."; // If we haven't loaded all the available artists we won't have this guys name yet
-						let thumb_image_url = "";
-						let socialAccounts = {};
-						if (availableArtists) {
-							const artist = availableArtists.find(artist => artist.id === id);
-
-							if (artist) {
-								name = artist.name;
-								thumb_image_url = artist.thumb_image_url || artist.image_url;
-								const {
-									bandcamp_username,
-									facebook_username,
-									instagram_username,
-									snapchat_username,
-									soundcloud_username,
-									website_url
-								} = artist;
-								socialAccounts = {
-									bandcamp: bandcamp_username,
-									facebook: facebook_username,
-									instagram: instagram_username,
-									snapchat: snapchat_username,
-									soundcloud: soundcloud_username,
-									website: website_url
-								};
-							}
+						const { setTime, importance } = eventArtist;
+						const { artist } = eventArtist;
+						if (!artist) {
+							return null;
 						}
+
+						const name = artist.name;
+						const thumb_image_url = artist.thumb_image_url || artist.image_url;
+						const {
+							bandcamp_username,
+							facebook_username,
+							instagram_username,
+							snapchat_username,
+							soundcloud_username,
+							website_url
+						} = artist;
+						const socialAccounts = {
+							bandcamp: bandcamp_username,
+							facebook: facebook_username,
+							instagram: instagram_username,
+							snapchat: snapchat_username,
+							soundcloud: soundcloud_username,
+							website: website_url
+						};
 
 						let active = index === artistTypeActiveIndex;
 						const isCancelled = eventArtist.status === "Cancelled";
@@ -422,7 +415,10 @@ class ArtistDetails extends Component {
 						const uniqueFlipKey = eventArtist.id || index;
 
 						return (
-							<LeftAlignedSubCard key={uniqueFlipKey} active={active}>
+							<LeftAlignedSubCard
+								key={uniqueFlipKey}
+								active={active}
+							>
 								<EventArtist
 									socialAccounts={socialAccounts}
 									typeHeading={importance === 0 ? "Headline act *" : "Supporting act"}
@@ -465,7 +461,6 @@ class ArtistDetails extends Component {
 
 ArtistDetails.propTypes = {
 	eventId: PropTypes.string,
-	artists: PropTypes.array.isRequired,
 	errors: PropTypes.object.isRequired
 };
 

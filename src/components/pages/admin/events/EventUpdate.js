@@ -572,7 +572,7 @@ class Event extends Component {
 					</div>
 
 					{artists !== null ? (
-						<Artists artists={artists} errors={errors.artistsErrors || {}}/>
+						<Artists errors={errors.artistsErrors || {}}/>
 					) : null}
 
 					<div className={classes.spacer}/>
