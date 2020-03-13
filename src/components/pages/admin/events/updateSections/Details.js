@@ -324,17 +324,9 @@ class Details extends Component {
 		const { venueId } = eventUpdateStore.event;
 		const venueOptions = [];
 
-		let label = "";
-
-		if (availableVenues !== null) {
-			availableVenues.forEach(venue => {
-				venueOptions.push({ value: venue.id, label: venue.name });
-			});
-
-			label = "Venue *";
-		} else {
-			label = "Loading venues...";
-		}
+		availableVenues.forEach(venue => {
+			venueOptions.push({ value: venue.id, label: venue.name });
+		});
 
 		return (
 			<SelectGroup
@@ -343,7 +335,7 @@ class Details extends Component {
 				error={errors.venueId}
 				name={"venues"}
 				missingItemsLabel={"No available venues"}
-				label={label}
+				label={"Venue *"}
 				onChange={e => {
 					const venueId = e.target.value;
 					this.changeDetails({ venueId });
